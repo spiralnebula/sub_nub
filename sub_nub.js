@@ -5,6 +5,7 @@ define({
 		require : [
 			"morphism",
 			"map_route",
+			"transistor"
 		]
 	},
 
@@ -126,8 +127,9 @@ define({
 						heard.event.target.getAttribute("data-first") && 
 						heard.state.route.current[0] !== heard.event.target.nextSibling.getAttribute("data-name")
 					) {
-
-						var node = self.library.map_route.get_nodes_to_show_and_hide_for_the_routing({
+						var node, softscreen
+						softscreen = 
+						node       = self.library.map_route.get_nodes_to_show_and_hide_for_the_routing({
 							old     : heard.state.route.current,
 							current : [],
 							map     : map
