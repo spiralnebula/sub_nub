@@ -42,4 +42,40 @@ describe("map route", function() {
 			})).toBe(true)
 		})
 	})
+
+	describe("is given name a child of the last member of route", function() {
+		var map = { 
+			"where" : { 
+				"child" : {
+					"some" : { 
+						"child" : {
+							"are"     : "someare",
+							"some"    : "some",
+							"aresome" : { 
+								"child" : { 
+									"some" : "some"
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+
+		it("tests on a regular map with a valid destination", function() {
+			expect(module.is_given_name_a_child_of_the_last_member_of_route({
+				map   : map,
+				route : [ "where", "some", "aresome" ],
+				name  : "some"
+			})).toEqual( true )
+		})
+
+		it("tests on a map without the child where it should be", function() {
+			expect(module.is_given_name_a_child_of_the_last_member_of_route({
+				map   : map,
+				route : [ "where", "some", "are" ],
+				name  : "some"
+			})).toEqual( false )
+		})
+	})
 })

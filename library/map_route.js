@@ -161,11 +161,16 @@
 				else_do : function ( loop ) {
 
 					if ( loop.indexed.list && loop.indexed.list.length > 0 ) {
+						var node_to_pass
+						node_to_pass = ( loop.indexed.class_name ? 
+							convert.node.children[loop.index].children[2] : 
+							convert.node.children[loop.index].children[1]
+						)
 						loop.into[loop.indexed.name] = {
-							node  : convert.node.children[loop.index].children[1],
+							node  : node_to_pass,
 							child : self.convert_map_into_node_map({
 								map  : loop.indexed.list,
-								node : convert.node.children[loop.index].children[1]
+								node : node_to_pass
 							})
 						}
 					} else {
@@ -180,7 +185,6 @@
 		get_value_of_nested_object_based_on_route : function ( get ) {
 
 			if ( get.route.length > 0 ) {
-				// console.log( get.object )
 				return this.get_value_of_nested_object_based_on_route({
 					route  : get.route.slice( 1 ),
 					object : get.object[get.route[0]]
@@ -188,6 +192,21 @@
 			} else {
 				return get.object
 			}
+		},
+
+		is_given_name_a_child_of_the_last_member_of_route : function ( what ) { 
+			var true_route, member
+			true_route = what.route.slice(0).join("#subnubsplit#child#subnubsplit#").split("#subnubsplit#")
+			member     = this.get_value_of_nested_object_based_on_route({
+				object : what.map,
+				route  : true_route
+			})
+			
+			return ( 
+				member.constructor === Object  &&
+				member.hasOwnProperty("child") &&
+				member.child.hasOwnProperty( what.name )
+			)
 		},
 
 		is_given_name_a_sibling_of_the_last_member_of_route : function ( what ) {

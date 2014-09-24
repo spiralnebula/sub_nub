@@ -5,12 +5,35 @@ define({
 		require : [
 			"morphism",
 			"map_route",
-			"transistor"
+			"transistor",
+			"event_master"
 		]
 	},
 
-	make : function () {
-		return {}
+	make : function ( define ) {
+
+		var event_circle, body
+
+		body         = this.library.transistor.make(this.define_body({
+			list       : define.list,
+			class_name : define.class_name
+		}))
+		event_circle = Object.create( this.library.event_master ).make({
+			events : this.define_event({
+				body : body.body
+			}),
+			state  : this.define_state()
+		})
+		event_circle.add_listener( this.define_listener({
+			list       : define.list,
+			class_name : define.class_name,
+			body       : body.body
+		}))
+
+		return { 
+			body  : body,
+			state : event_circle
+		}
 	},
 
 	define_state : function ( define ) { 
@@ -60,11 +83,11 @@ define({
 				that_happens : [
 					{
 						on   : define.body,
-						is   : [ "mouseleave" ],
+						is   : [ "mouseover" ],
 					}
 				],
 				only_if      : function (heard) {
-					return true
+					return ( heard.event.target.hasAttribute("data-subnub-softscreen") )
 				}
 			}
 		]
@@ -81,15 +104,21 @@ define({
 		})
 
 		return [
-			{ 
+			{
 				for       : "enter no list",
 				that_does : function ( heard ) {
 
-					var current_location_name, last_route_location, is_location_name_a_sibling_of_last_location
+					var current_location_name, last_route_location, 
+					is_location_name_a_sibling_of_last_location, is_location_name_a_child_of_current_location
 
-					current_location_name                       = heard.event.target.getAttribute("data-subnub-name")
-					last_route_location                         = heard.state.route.current[heard.state.route.current.length-1]
-					is_location_name_a_sibling_of_last_location = self.library.map_route.is_given_name_a_sibling_of_the_last_member_of_route({
+					current_location_name                        = heard.event.target.getAttribute("data-subnub-name")
+					last_route_location                          = heard.state.route.current[heard.state.route.current.length-1]
+					is_location_name_a_sibling_of_last_location  = self.library.map_route.is_given_name_a_sibling_of_the_last_member_of_route({
+						map   : map,
+						route : heard.state.route.current,
+						name  : current_location_name
+					})
+					is_location_name_a_child_of_current_location = self.library.map_route.is_given_name_a_child_of_the_last_member_of_route({
 						map   : map,
 						route : heard.state.route.current,
 						name  : current_location_name
@@ -97,7 +126,8 @@ define({
 
 					if ( 
 						current_location_name !== last_route_location &&
-						is_location_name_a_sibling_of_last_location
+						is_location_name_a_sibling_of_last_location   &&
+						is_location_name_a_child_of_current_location === false
 					) {
 
 						heard.state.route.node = self.library.map_route.get_nodes_to_show_and_hide_for_the_routing({
@@ -110,7 +140,7 @@ define({
 							array   : heard.state.route.node.hide,
 							else_do : function ( loop ) {
 								loop.indexed.style.display = "none"
-								loop.indexed.previousSibling.setAttribute( "class", define.class_name.item )
+								loop.indexed.previousSibling.setAttribute( "class", define.class_name.sub_text )
 								return loop.into.concat( "none" )
 							}
 						})
@@ -127,8 +157,10 @@ define({
 						heard.event.target.getAttribute("data-first") && 
 						heard.state.route.current[0] !== heard.event.target.nextSibling.getAttribute("data-name")
 					) {
+						
 						var node, softscreen
-						softscreen = 
+
+						softscreen = heard.event.target.nextSibling
 						node       = self.library.map_route.get_nodes_to_show_and_hide_for_the_routing({
 							old     : heard.state.route.current,
 							current : [],
@@ -142,16 +174,24 @@ define({
 								return loop.into.concat( "none" )
 							}
 						})
+						softscreen.style.display     = "block"
+						heard.state.route.old        = heard.state.route.current.slice(0)
+						heard.state.route.current    = self.library.map_route.parse_route({
+							map     : map,
+							current : heard.state.route.current,
+							new     : heard.event.target.nextSibling.nextSibling.getAttribute("data-name")
+						})
 
-						heard.state.route.current = []
+					} else {
+
+						heard.state.route.old     = heard.state.route.current.slice(0)
+						heard.state.route.current = self.library.map_route.parse_route({
+							map     : map,
+							current : heard.state.route.current,
+							new     : heard.event.target.nextSibling.getAttribute("data-name")
+						})
 					}
-
-					heard.state.route.old     = heard.state.route.current.slice(0)
-					heard.state.route.current = self.library.map_route.parse_route({
-						map     : map,
-						current : heard.state.route.current,
-						new     : heard.event.target.nextSibling.getAttribute("data-name")
-					})
+					
 
 					return heard
 				}
@@ -170,7 +210,7 @@ define({
 						array   : heard.state.route.node.hide,
 						else_do : function ( loop ) {
 							loop.indexed.style.display = "none"
-							loop.indexed.previousSibling.setAttribute( "class", define.class_name.item )
+							loop.indexed.previousSibling.setAttribute( "class", define.class_name.sub_text )
 							return loop.into.concat( "none" )
 						}
 					})
@@ -204,14 +244,14 @@ define({
 						else_do : function ( loop ) {
 							loop.indexed.style.display = "none"
 							if ( loop.index > 0 ) { 
-								loop.indexed.previousSibling.setAttribute( "class", define.class_name.item )
+								loop.indexed.previousSibling.setAttribute( "class", define.class_name.sub_text )
 							}
 							return loop.into.concat( "none" )
 						}
 					})
-
-					heard.state.route.current = []
-					heard.state.route.old     = []
+					heard.event.target.style.display = "none"
+					heard.state.route.current        = []
+					heard.state.route.old            = []
 					return heard		
 				}
 			}
@@ -229,13 +269,14 @@ define({
 		}
 	},
 
-	define_list_children_body : function (define) {
+	define_list_children_body : function ( define ) {
 
 		var self = this
 
 		return this.library.morphism.index_loop({
 			array   : define.list,
 			else_do : function ( loop ) {
+
 				var definition, has_list
 
 				has_list   = ( loop.indexed.list && loop.indexed.list.length > 0 )
@@ -257,8 +298,19 @@ define({
 						}
 					]
 				}
+
 				if ( loop.indexed.class_name ) {
 					definition.child[0]["data-first"] = "true"
+					definition.child                  = definition.child.concat({
+						"data-subnub-softscreen" : "true",
+						"position"               : "fixed",
+						"left"                   : "0px",
+						"top"                    : "0px",
+						"width"                  : "100%",
+						"height"                 : "100%",
+						"background-color"       : "rgba( 0, 0, 0, 0.3 )",
+						"display"                : "none"
+					})
 				}
 				
 				if ( has_list ) {
